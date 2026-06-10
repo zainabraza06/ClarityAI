@@ -73,6 +73,7 @@ def _build_providers(temperature: float) -> List[BaseChatModel]:
                     model=_GROQ_MODEL,
                     api_key=os.environ["GROQ_API_KEY"],
                     temperature=temperature,
+                    max_retries=0,  # fail fast; let fallback chain handle 429s
                 )
             )
             logger.info("LLM provider: Groq (%s)", _GROQ_MODEL)

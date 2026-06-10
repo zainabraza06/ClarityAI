@@ -1,0 +1,19 @@
+{
+  "run_at": "2026-06-10T12:11:20.598919Z",
+  "backend_url": "http://localhost:8000",
+  "total": 1,
+  "passed": 0,
+  "failed": 0,
+  "errors": 1,
+  "avg_score_pct": 0.0,
+  "avg_latency_s": 16.7,
+  "results": [
+    {
+      "id": "private_company_openai",
+      "status": "api_error",
+      "http_status": 429,
+      "body": "{\"detail\":\"All LLM providers are rate-limited. Please wait a moment and retry.\"}",
+      "elapsed_s": 16.69
+    }
+  ]
+}

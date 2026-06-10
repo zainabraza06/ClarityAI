@@ -1,4 +1,4 @@
-// File: E:\MERN\PROJECTS\clarityAI\frontend\app\api\chat\stream\route.ts
+// File: C:\Users\HP 15s fq4014ne\Documents\Zainab rAza\clarityAI\ClarityAI\frontend\app\api\chat\stream\route.ts
 import * as entry from '../../../../../../app/api/chat/stream/route.js'
 import type { NextRequest } from 'next/server.js'
 

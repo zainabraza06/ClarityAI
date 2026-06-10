@@ -1,4 +1,4 @@
-// File: E:\MERN\PROJECTS\clarityAI\frontend\app\layout.tsx
+// File: C:\Users\HP 15s fq4014ne\Documents\Zainab rAza\clarityAI\ClarityAI\frontend\app\layout.tsx
 import * as entry from '../../../app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

@@ -91,7 +91,7 @@ async def chat(request: ChatRequest):
     config = {"configurable": {"thread_id": thread_id}}
 
     try:
-        current_state = graph.get_state(config)
+        current_state = await graph.aget_state(config)
 
         if current_state.next:
             result = await graph.ainvoke(Command(resume=request.message), config)
@@ -101,7 +101,7 @@ async def chat(request: ChatRequest):
                 config,
             )
 
-        new_state = graph.get_state(config)
+        new_state = await graph.aget_state(config)
         if new_state.next:
             return ChatResponse(
                 status="needs_clarification",
@@ -146,7 +146,7 @@ async def chat_stream(request: ChatRequest):
     thread_id = request.thread_id or str(uuid4())
     config = {"configurable": {"thread_id": thread_id}}
 
-    current_state = graph.get_state(config)
+    current_state = await graph.aget_state(config)
     stream_input = (
         Command(resume=request.message)
         if current_state.next
@@ -189,7 +189,7 @@ async def chat_stream(request: ChatRequest):
             yield _sse({"type": "error", "message": str(exc)})
 
         # Determine final outcome after the stream completes
-        final_state = graph.get_state(config)
+        final_state = await graph.aget_state(config)
 
         if final_state.next:
             yield _sse(

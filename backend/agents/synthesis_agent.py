@@ -26,8 +26,10 @@ Key challenges and growth opportunities based on the research.
 3-5 bullet points summarising the most important findings.
 
 Guidelines:
-- Be specific and factual — no vague filler content
-- If a section has no data, omit it
+- Write a thorough report — minimum 500 words total
+- Each section must contain at least 3-4 sentences or bullet points
+- Be specific and factual — cite actual figures, names, and dates from the research
+- Only omit a section if there is genuinely zero data for it; use partial data rather than skip
 - Use professional business language
 - Maintain context from the conversation history for follow-up questions"""
 
@@ -62,8 +64,9 @@ Leadership quality and strategic direction.
 Overall assessment and key watchpoints.
 
 Guidelines:
+- Write a thorough memo — minimum 500 words total
+- Each section must have at least 3-4 sentences; use partial data rather than skip a section
 - Use precise financial language; cite actual numbers when available
-- If a section has no supporting data, omit it
 - Maintain context from conversation history"""
 
 _COMPETITOR_ANALYSIS_PROMPT = """You are the Synthesis Agent for ClarityAI, acting as a strategic analyst.
@@ -97,9 +100,11 @@ Growth opportunities and competitive threats on the horizon.
 Overall competitive standing and outlook.
 
 Guidelines:
+- Write a thorough analysis — minimum 500 words total
+- Each section must have at least 3-4 sentences or bullet points
 - Be specific about which competitors and why they matter
 - Focus on strategic dynamics, not just basic descriptions
-- Omit sections with no supporting data"""
+- Use partial data rather than skip a section"""
 
 _SWOT_PROMPT = """You are the Synthesis Agent for ClarityAI, acting as a strategic business analyst.
 
@@ -126,9 +131,10 @@ External risks that could harm the company's position.
 2-3 sentences synthesising the most critical insight from the SWOT.
 
 Guidelines:
-- Each section should have 3-6 concrete, well-reasoned bullet points
+- Write a thorough SWOT — minimum 450 words total
+- Each section must have 3-6 concrete, well-reasoned bullet points
 - Avoid generic observations — base every point on the research findings
-- Omit sections that lack sufficient data"""
+- Use partial data rather than skip a section"""
 
 _COMPARISON_PROMPT = """You are the Synthesis Agent for ClarityAI, acting as a comparative business analyst.
 
@@ -169,6 +175,8 @@ The 3-5 most important ways these companies differ.
 Which company appears stronger overall and why — or where each excels in different dimensions.
 
 Guidelines:
+- Write a thorough comparison — minimum 500 words total
+- Each section must have at least 3-4 sentences; use partial data rather than skip a section
 - Replace [Company A] and [Company B] with the actual company names from the query
 - Fill table cells with actual data; use "N/A" if unknown
 - Be balanced — avoid clear bias toward one company

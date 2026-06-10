@@ -13,6 +13,8 @@ class ResearchOutput(BaseModel):
 
 RESEARCH_SYSTEM_PROMPT = """You are the Research Agent for ClarityAI. Gather business intelligence using the search tool.
 
+IMPORTANT: You MUST call the search tool at least once. Never answer from memory alone — always search first.
+
 Search Strategy:
 - For a single company: run 2-3 searches covering (1) company overview and background, (2) recent news and developments (last 6 months), (3) market position and competitors
 - For comparison queries (e.g. "Tesla vs Rivian"): run a dedicated search for each company
@@ -37,10 +39,18 @@ Be accurate — a false high score skips quality checks."""
 MAX_TOOL_RESULT_CHARS = 3000
 
 _URL_RE = re.compile(r'https?://[^\s\'"<>\]\)]+')
+_VALID_TIME_RANGES = {"day", "week", "month", "year"}
 
 
 def _extract_urls(text: str) -> List[str]:
     return [u.rstrip(".,;)") for u in _URL_RE.findall(text)]
+
+
+def _sanitize_tool_args(tool_name: str, args: dict) -> dict:
+    """Strip invalid time_range values — Groq/Gemini reject anything outside the enum."""
+    if "time_range" in args and args["time_range"] not in _VALID_TIME_RANGES:
+        return {k: v for k, v in args.items() if k != "time_range"}
+    return args
 
 
 # Module-level import attempt for document store — fails gracefully if unavailable
@@ -120,7 +130,8 @@ def create_research_node(tools: list):
                 tool_name = tc["name"]
                 if tool_name in tools_by_name:
                     try:
-                        result = await tools_by_name[tool_name].ainvoke(tc["args"])
+                        safe_args = _sanitize_tool_args(tool_name, tc["args"])
+                        result = await tools_by_name[tool_name].ainvoke(safe_args)
                         content = str(result)[:MAX_TOOL_RESULT_CHARS]
                         all_tool_results.append(content)
                         research_messages.append(

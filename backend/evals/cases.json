@@ -1,0 +1,172 @@
+[
+  {
+    "id": "standard_apple",
+    "description": "Standard report on a large-cap public company",
+    "message": "Research Apple Inc",
+    "template": "standard",
+    "criteria": {
+      "min_words": 300,
+      "min_confidence": 6,
+      "must_mention": ["Apple", "revenue", "iPhone"],
+      "required_sections": ["Overview", "Financial"],
+      "must_have_sources": true,
+      "must_not_contain": ["I cannot", "I don't have", "As an AI"]
+    }
+  },
+  {
+    "id": "investor_memo_nvidia",
+    "description": "Investor memo for a high-growth AI company",
+    "message": "Write an investor memo for NVIDIA",
+    "template": "investor_memo",
+    "criteria": {
+      "min_words": 400,
+      "min_confidence": 6,
+      "must_mention": ["NVIDIA", "GPU", "revenue"],
+      "required_sections": ["Investment Thesis", "Risk"],
+      "must_have_sources": true,
+      "must_not_contain": ["I cannot", "I don't have"]
+    }
+  },
+  {
+    "id": "swot_microsoft",
+    "description": "SWOT analysis produces all four quadrants",
+    "message": "Do a SWOT analysis of Microsoft",
+    "template": "swot",
+    "criteria": {
+      "min_words": 350,
+      "min_confidence": 6,
+      "must_mention": ["Microsoft", "Azure"],
+      "required_sections": ["Strengths", "Weaknesses", "Opportunities", "Threats"],
+      "must_have_sources": false,
+      "must_not_contain": ["I cannot"]
+    }
+  },
+  {
+    "id": "competitor_analysis_google",
+    "description": "Competitor analysis identifies real competitors",
+    "message": "Competitor analysis of Google",
+    "template": "competitor_analysis",
+    "criteria": {
+      "min_words": 350,
+      "min_confidence": 6,
+      "must_mention": ["Google", "Microsoft", "advertising"],
+      "required_sections": ["Competitive", "Competitor"],
+      "must_have_sources": true,
+      "must_not_contain": ["I cannot"]
+    }
+  },
+  {
+    "id": "comparison_amazon_vs_microsoft",
+    "description": "Comparison template produces side-by-side analysis",
+    "message": "Compare Amazon vs Microsoft cloud business",
+    "template": "comparison",
+    "criteria": {
+      "min_words": 400,
+      "min_confidence": 5,
+      "must_mention": ["Amazon", "Microsoft", "AWS", "Azure"],
+      "required_sections": ["Verdict", "Comparison"],
+      "must_have_sources": true,
+      "must_not_contain": ["I cannot"]
+    }
+  },
+  {
+    "id": "financial_data_tesla",
+    "description": "Report includes real financial figures (yfinance integration)",
+    "message": "Research Tesla financials",
+    "template": "standard",
+    "criteria": {
+      "min_words": 300,
+      "min_confidence": 5,
+      "must_mention": ["Tesla", "revenue"],
+      "required_sections": ["Financial"],
+      "must_have_sources": false,
+      "financial_figures_pattern": "\\$[0-9]",
+      "must_not_contain": ["I cannot"]
+    }
+  },
+  {
+    "id": "private_company_openai",
+    "description": "Handles private company gracefully (no public financials)",
+    "message": "Research OpenAI company overview",
+    "template": "standard",
+    "criteria": {
+      "min_words": 250,
+      "min_confidence": 4,
+      "must_mention": ["OpenAI", "GPT"],
+      "required_sections": ["Overview"],
+      "must_have_sources": true,
+      "must_not_contain": ["I cannot provide", "no information available"]
+    }
+  },
+  {
+    "id": "small_cap_company",
+    "description": "Handles lesser-known companies without hallucinating",
+    "message": "Research Palantir Technologies",
+    "template": "standard",
+    "criteria": {
+      "min_words": 250,
+      "min_confidence": 4,
+      "must_mention": ["Palantir"],
+      "required_sections": ["Overview"],
+      "must_have_sources": true,
+      "must_not_contain": ["I cannot"]
+    }
+  },
+  {
+    "id": "recent_news_focus",
+    "description": "Research includes recent developments (not just training data)",
+    "message": "What has Meta been doing recently",
+    "template": "standard",
+    "criteria": {
+      "min_words": 250,
+      "min_confidence": 5,
+      "must_mention": ["Meta"],
+      "required_sections": ["Recent", "Development"],
+      "must_have_sources": true,
+      "must_not_contain": ["I cannot"]
+    }
+  },
+  {
+    "id": "investor_memo_startup",
+    "description": "Investor memo for a well-known private startup",
+    "message": "Write an investor memo for SpaceX",
+    "template": "investor_memo",
+    "criteria": {
+      "min_words": 350,
+      "min_confidence": 4,
+      "must_mention": ["SpaceX", "Elon"],
+      "required_sections": ["Investment Thesis"],
+      "must_have_sources": true,
+      "must_not_contain": ["I cannot"]
+    }
+  },
+  {
+    "id": "confidence_score_range",
+    "description": "Confidence score is always an integer in valid range 0-10",
+    "message": "Research Amazon",
+    "template": "standard",
+    "criteria": {
+      "min_words": 200,
+      "min_confidence": 1,
+      "confidence_max": 10,
+      "must_mention": ["Amazon"],
+      "required_sections": [],
+      "must_have_sources": false,
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": "response_not_empty",
+    "description": "Pipeline always produces a non-empty final response",
+    "message": "Tell me about Berkshire Hathaway",
+    "template": "standard",
+    "criteria": {
+      "min_words": 150,
+      "min_confidence": 1,
+      "must_mention": ["Berkshire"],
+      "required_sections": [],
+      "must_have_sources": false,
+      "must_not_contain": []
+    }
+  }
+]
