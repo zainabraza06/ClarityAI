@@ -26,6 +26,7 @@ AGENT_DISPLAY_NAMES = {
 class ChatRequest(BaseModel):
     message: str
     thread_id: Optional[str] = None
+    template: Optional[str] = "standard"
 
 
 class ChatResponse(BaseModel):
@@ -34,6 +35,7 @@ class ChatResponse(BaseModel):
     question: Optional[str] = None
     thread_id: str
     confidence_score: Optional[int] = None
+    sources: Optional[list] = None
 
 
 # ---------- Helpers ----------
@@ -55,7 +57,7 @@ def _extract_interrupt_question(graph_state) -> str:
     return default
 
 
-def _build_initial_state(message: str) -> dict:
+def _build_initial_state(message: str, template: str = "standard") -> dict:
     """Fresh state for a new query (or follow-up on a completed thread)."""
     return {
         "messages": [HumanMessage(content=message)],
@@ -67,6 +69,8 @@ def _build_initial_state(message: str) -> dict:
         "confidence_score": None,
         "validation_result": None,
         "final_response": None,
+        "template": template,
+        "sources": None,
     }
 
 
@@ -92,7 +96,10 @@ async def chat(request: ChatRequest):
         if current_state.next:
             result = await graph.ainvoke(Command(resume=request.message), config)
         else:
-            result = await graph.ainvoke(_build_initial_state(request.message), config)
+            result = await graph.ainvoke(
+                _build_initial_state(request.message, request.template or "standard"),
+                config,
+            )
 
         new_state = graph.get_state(config)
         if new_state.next:
@@ -106,6 +113,7 @@ async def chat(request: ChatRequest):
             status="success",
             response=result.get("final_response", ""),
             confidence_score=result.get("confidence_score"),
+            sources=result.get("sources") or [],
             thread_id=thread_id,
         )
 
@@ -130,7 +138,7 @@ async def chat_stream(request: ChatRequest):
       { type: "agent_start", agent: "Research Agent", thread_id: "..." }
       { type: "agent_end",   agent: "Research Agent", output: {...} }
       { type: "needs_clarification", question: "...", thread_id: "..." }
-      { type: "final", response: "...", confidence_score: 8, thread_id: "..." }
+      { type: "final", response: "...", confidence_score: 8, sources: [...], thread_id: "..." }
       { type: "error", message: "..." }
       data: [DONE]
     """
@@ -142,7 +150,7 @@ async def chat_stream(request: ChatRequest):
     stream_input = (
         Command(resume=request.message)
         if current_state.next
-        else _build_initial_state(request.message)
+        else _build_initial_state(request.message, request.template or "standard")
     )
 
     async def generate():
@@ -198,6 +206,7 @@ async def chat_stream(request: ChatRequest):
                     "type": "final",
                     "response": vals.get("final_response", ""),
                     "confidence_score": vals.get("confidence_score"),
+                    "sources": vals.get("sources") or [],
                     "thread_id": thread_id,
                 }
             )

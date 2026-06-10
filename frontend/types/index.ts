@@ -11,6 +11,17 @@ export interface ChatMessage {
   timestamp: string;
   agentSteps?: AgentStep[];
   confidenceScore?: number;
+  sources?: string[];
+  template?: string;
+}
+
+export interface Conversation {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  threadId: string;
+  template: string;
+  createdAt: string;
 }
 
 export interface SSEEvent {
@@ -25,6 +36,48 @@ export interface SSEEvent {
   question?: string;
   response?: string;
   confidence_score?: number;
+  sources?: string[];
   thread_id?: string;
   message?: string;
 }
+
+export type TemplateId =
+  | "standard"
+  | "investor_memo"
+  | "competitor_analysis"
+  | "swot"
+  | "comparison";
+
+export interface TemplateOption {
+  id: TemplateId;
+  label: string;
+  placeholder: string;
+}
+
+export const TEMPLATES: TemplateOption[] = [
+  {
+    id: "standard",
+    label: "Standard",
+    placeholder: "Ask about any company — e.g. 'Research NVIDIA's AI strategy'",
+  },
+  {
+    id: "investor_memo",
+    label: "Investor Memo",
+    placeholder: "e.g. 'Analyse OpenAI as an investment opportunity'",
+  },
+  {
+    id: "competitor_analysis",
+    label: "Competitor Analysis",
+    placeholder: "e.g. 'Competitive analysis of Tesla in the EV market'",
+  },
+  {
+    id: "swot",
+    label: "SWOT",
+    placeholder: "e.g. 'SWOT analysis of Apple Inc.'",
+  },
+  {
+    id: "comparison",
+    label: "Comparison",
+    placeholder: "e.g. 'Compare Tesla vs Rivian: strategy and financials'",
+  },
+];

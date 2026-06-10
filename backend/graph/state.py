@@ -15,3 +15,5 @@ class AgentState(TypedDict):
     validation_result: Optional[str]
     attempts: int
     final_response: Optional[str]
+    template: Optional[str]   # standard | investor_memo | competitor_analysis | swot | comparison
+    sources: Optional[List[str]]  # source URLs collected during research
