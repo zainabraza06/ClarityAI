@@ -1,0 +1,73 @@
+INFO:     Will watch for changes in these directories: ['E:\\MERN\\PROJECTS\\clarityAI\\backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [3580] using WatchFiles
+INFO:     Started server process [17612]
+INFO:     Waiting for application startup.
+2026-05-27 13:59:34,818  INFO  clarityai — Starting Tavily MCP server...
+2026-05-27 13:59:35,267  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:35,626  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:36,034  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:36,403  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:36,814  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:37,228  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:37,604  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:38,019  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:38,377  INFO  watchfiles.main — 1 change detected
+Tavily MCP server running on stdio
+2026-05-27 13:59:38,527  INFO  clarityai — Tavily MCP ready — tools available: ['tavily_search', 'tavily_extract', 'tavily_crawl', 'tavily_map', 'tavily_research']
+2026-05-27 13:59:38,544  INFO  clarityai — LangGraph workflow compiled and ready.
+INFO:     Application startup complete.
+2026-05-27 13:59:38,787  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:39,199  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:39,611  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:40,030  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:40,445  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:40,820  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:41,232  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:41,607  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:42,033  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:42,444  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:42,859  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:43,276  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:43,643  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:44,058  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:44,469  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:44,880  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:45,294  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:45,703  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:46,064  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:46,477  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:46,892  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:47,306  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:47,717  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:48,088  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:48,440  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:48,803  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:49,172  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:49,530  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:49,889  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:50,253  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:50,614  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:51,023  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:51,433  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:51,793  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:52,195  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:52,606  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:53,014  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:53,389  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:53,804  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:54,180  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:54,604  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:55,017  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:55,438  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:55,804  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:56,219  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:56,642  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:57,003  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:57,392  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:57,815  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:58,225  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:58,632  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:59,056  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:59,423  INFO  watchfiles.main — 1 change detected
+2026-05-27 13:59:59,878  INFO  watchfiles.main — 1 change detected
