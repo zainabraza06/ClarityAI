@@ -13,6 +13,7 @@ import {
 import MessageBubble from "./MessageBubble";
 import AgentTimeline from "./AgentTimeline";
 import Sidebar from "./Sidebar";
+import DocumentPanel from "./DocumentPanel";
 
 const STORAGE_KEY = "clarityai_conversations";
 const MAX_CONVERSATIONS = 20;
@@ -37,6 +38,7 @@ export default function ChatInterface() {
 
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>("standard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [documentsOpen, setDocumentsOpen] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -328,6 +330,9 @@ export default function ChatInterface() {
         }}
       />
 
+      {/* Document panel (fixed overlay) */}
+      {documentsOpen && <DocumentPanel onClose={() => setDocumentsOpen(false)} />}
+
       {/* Main chat column */}
       <div className="flex flex-col flex-1 min-w-0">
         {/* Header */}
@@ -352,6 +357,25 @@ export default function ChatInterface() {
             <h1 className="text-sm font-semibold text-slate-900">ClarityAI</h1>
             <p className="text-xs text-slate-500">Multi-agent business research</p>
           </div>
+
+          {/* Documents button */}
+          <button
+            type="button"
+            onClick={() => setDocumentsOpen((o) => !o)}
+            title="Documents"
+            className={`p-1.5 rounded-lg transition ${
+              documentsOpen
+                ? "bg-brand-50 text-brand-600"
+                : "text-slate-500 hover:bg-slate-100"
+            }`}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+          </button>
 
           <div className="ml-auto flex items-center gap-2">
             {threadId && (

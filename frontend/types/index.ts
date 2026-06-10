@@ -54,6 +54,14 @@ export interface TemplateOption {
   placeholder: string;
 }
 
+export interface StoredDocument {
+  id: string;
+  filename: string;
+  source_type: "pdf" | "txt" | "url";
+  chunk_count: number;
+  uploaded_at: string;
+}
+
 export const TEMPLATES: TemplateOption[] = [
   {
     id: "standard",

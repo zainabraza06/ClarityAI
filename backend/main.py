@@ -10,9 +10,12 @@ load_dotenv()
 
 from api import app_state
 from api.routes import router
+from api.document_routes import document_router
+from documents.store import init_db
 from graph.workflow import create_workflow
 from langchain_mcp_adapters.tools import load_mcp_tools
 from tools.tavily_mcp import build_mcp_client
+from tools.financial import get_financial_data
 
 logging.basicConfig(
     level=logging.INFO,
@@ -35,31 +38,48 @@ def _validate_env() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    FastAPI lifespan handler.
-
-    Starts the Tavily MCP server as a subprocess (via npx), loads the LangChain
-    tool wrappers, compiles the LangGraph workflow, then keeps everything alive
-    until the app shuts down.
-    """
     _validate_env()
-    logger.info("Starting Tavily MCP server...")
 
-    mcp_client = build_mcp_client()
+    # Initialise document store (creates SQLite tables if missing)
+    await init_db()
+    logger.info("Document store ready.")
 
-    # v0.2.x API: use client.session() context manager to keep the MCP server alive
-    async with mcp_client.session("tavily") as session:
-        tools = await load_mcp_tools(session)
-        logger.info(
-            "Tavily MCP ready — tools available: %s",
-            [t.name for t in tools],
+    # Resolve checkpointer — prefer SQLite for persistence, fall back to MemorySaver
+    try:
+        from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+        _sqlite_available = True
+    except ImportError:
+        _sqlite_available = False
+        logger.warning(
+            "langgraph-checkpoint-sqlite not installed — "
+            "conversation state will not persist across restarts. "
+            "Run: pip install langgraph-checkpoint-sqlite"
         )
 
-        app_state["graph"] = create_workflow(tools)
-        app_state["tools"] = tools
-        logger.info("LangGraph workflow compiled and ready.")
+    mcp_client = build_mcp_client()
+    logger.info("Starting Tavily MCP server...")
 
-        yield
+    async with mcp_client.session("tavily") as session:
+        mcp_tools = await load_mcp_tools(session)
+        all_tools = mcp_tools + [get_financial_data]
+
+        logger.info(
+            "Tools loaded: %s", [t.name for t in all_tools]
+        )
+
+        if _sqlite_available:
+            async with AsyncSqliteSaver.from_conn_string("clarity_checkpoints.db") as checkpointer:
+                logger.info("Persistent SQLite checkpointer active (clarity_checkpoints.db).")
+                app_state["graph"] = create_workflow(all_tools, checkpointer)
+                app_state["tools"] = all_tools
+                logger.info("LangGraph workflow compiled and ready.")
+                yield
+        else:
+            from langgraph.checkpoint.memory import MemorySaver
+            app_state["graph"] = create_workflow(all_tools, MemorySaver())
+            app_state["tools"] = all_tools
+            logger.info("LangGraph workflow compiled (in-memory state).")
+            yield
 
     app_state.clear()
     logger.info("MCP client closed. Application shutdown complete.")
@@ -68,7 +88,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="ClarityAI",
     description="Multi-agent business research assistant",
-    version="1.0.0",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -81,6 +101,7 @@ app.add_middleware(
 )
 
 app.include_router(router)
+app.include_router(document_router)
 
 
 if __name__ == "__main__":
