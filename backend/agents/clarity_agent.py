@@ -39,7 +39,10 @@ async def clarity_node(state: dict) -> dict:
     history_lines = []
     for m in messages[:-1]:
         role = "User" if isinstance(m, HumanMessage) else "Assistant"
-        history_lines.append(f"{role}: {m.content}")
+        content = m.content if isinstance(m.content, str) else " ".join(
+            p.get("text", "") if isinstance(p, dict) else str(p) for p in m.content
+        )
+        history_lines.append(f"{role}: {content}")
     history = "\n".join(history_lines) if history_lines else "No prior conversation."
 
     prompt = f"""Conversation history:

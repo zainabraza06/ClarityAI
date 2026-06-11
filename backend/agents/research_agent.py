@@ -47,6 +47,16 @@ def _extract_urls(text: str) -> List[str]:
     return [u.rstrip(".,;)") for u in _URL_RE.findall(text)]
 
 
+def _content_str(content) -> str:
+    """Normalize LLM response content — langchain-core 1.x can return a list of parts."""
+    if isinstance(content, list):
+        return " ".join(
+            part.get("text", "") if isinstance(part, dict) else str(part)
+            for part in content
+        )
+    return str(content) if content else ""
+
+
 def _sanitize_tool_args(tool_name: str, args: dict) -> dict:
     """Strip invalid time_range values -- Groq/Gemini reject anything outside the enum."""
     if "time_range" in args and args["time_range"] not in _VALID_TIME_RANGES:
@@ -75,7 +85,7 @@ def create_research_node(tools: list):
         history_lines = []
         for m in messages_history[-4:]:
             role = "User" if isinstance(m, HumanMessage) else "Assistant"
-            history_lines.append(f"{role}: {m.content[:150]}")
+            history_lines.append(f"{role}: {_content_str(m.content)[:150]}")
         history = "\n".join(history_lines) if history_lines else "No prior conversation."
 
         # 1. Proactively fetch real-time financial data
@@ -155,7 +165,7 @@ def create_research_node(tools: list):
             response = await llm_with_tools.ainvoke(research_messages)
             iterations += 1
 
-        raw_findings = (response.content or "No research data retrieved.")[:4000]
+        raw_findings = (_content_str(response.content) or "No research data retrieved.")[:4000]
 
         # 4. Collect source URLs
         seen: set = set()
