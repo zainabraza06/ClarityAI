@@ -10,6 +10,7 @@ class AgentState(TypedDict):
     user_query: str
     clarified_query: Optional[str]
     clarity_status: Optional[str]
+    clarification_question: Optional[str]
     research_findings: Optional[str]
     confidence_score: Optional[int]
     validation_result: Optional[str]

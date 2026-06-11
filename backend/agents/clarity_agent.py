@@ -1,7 +1,6 @@
 from typing import Literal, Optional
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langgraph.types import interrupt
 
 from llm.provider import create_structured_llm
 
@@ -57,21 +56,14 @@ Is this query clear enough for business research?"""
 
     if result.clarity_status == "needs_clarification":
         question = result.clarification_question or "Which company are you asking about?"
-
-        # Pause the graph — resumes when the user provides clarification
-        clarification: str = interrupt({"question": question})
-
         return {
-            "messages": [
-                AIMessage(content=question),
-                HumanMessage(content=clarification),
-            ],
-            "clarity_status": "clear",
-            "clarified_query": clarification,
-            "user_query": clarification,
+            "clarity_status": "needs_clarification",
+            "clarification_question": question,
+            "clarified_query": None,
         }
 
     return {
         "clarity_status": "clear",
         "clarified_query": user_query,
+        "clarification_question": None,
     }

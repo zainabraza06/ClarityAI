@@ -8,6 +8,10 @@ from agents.validator_agent import validator_node
 from agents.synthesis_agent import synthesis_node
 
 
+def _route_after_clarity(state: AgentState) -> str:
+    return "research" if state.get("clarity_status") == "clear" else END
+
+
 def _route_after_research(state: AgentState) -> str:
     score = state.get("confidence_score") or 0
     return "synthesis" if score >= 6 else "validator"
@@ -26,12 +30,13 @@ def create_workflow(tools: list, checkpointer=None):
     Build and compile the LangGraph multi-agent workflow.
 
     Topology:
-        START → clarity → research → [validator ↔ research (retry)] → synthesis → END
+        START → clarity → [needs_clarification → END] or [clear → research]
+                → [validator ↔ research (retry)] → synthesis → END
 
-    The clarity node uses interrupt() to pause when a query is ambiguous.
-    A checkpointer (MemorySaver or AsyncSqliteSaver) enables interrupt/resume
-    and multi-turn memory. Pass an external checkpointer for persistent storage;
-    defaults to in-memory MemorySaver if none is provided.
+    Clarification uses state-based routing (no interrupt()) so it works
+    correctly with astream_events in LangGraph 1.x.
+    A checkpointer enables multi-turn memory. Pass an external checkpointer
+    for persistent storage; defaults to in-memory MemorySaver if none provided.
     """
     research_node = create_research_node(tools)
 
@@ -43,7 +48,12 @@ def create_workflow(tools: list, checkpointer=None):
     builder.add_node("synthesis", synthesis_node)
 
     builder.add_edge(START, "clarity")
-    builder.add_edge("clarity", "research")
+
+    builder.add_conditional_edges(
+        "clarity",
+        _route_after_clarity,
+        {"research": "research", END: END},
+    )
 
     builder.add_conditional_edges(
         "research",

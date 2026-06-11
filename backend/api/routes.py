@@ -3,8 +3,6 @@ import logging
 from typing import Optional
 from uuid import uuid4
 
-logger = logging.getLogger("clarityai.routes")
-
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage
@@ -12,6 +10,8 @@ from langgraph.types import Command
 from pydantic import BaseModel
 
 from . import app_state
+
+logger = logging.getLogger("clarityai.routes")
 
 router = APIRouter(prefix="/api")
 
@@ -51,15 +51,6 @@ def _get_graph():
     return graph
 
 
-def _extract_interrupt_question(graph_state) -> str:
-    default = "Could you please clarify your query?"
-    for task in graph_state.tasks:
-        for intr in task.interrupts:
-            if isinstance(intr.value, dict) and "question" in intr.value:
-                return intr.value["question"]
-    return default
-
-
 def _build_initial_state(message: str, template: str = "standard") -> dict:
     """Fresh state for a new query (or follow-up on a completed thread)."""
     return {
@@ -67,6 +58,7 @@ def _build_initial_state(message: str, template: str = "standard") -> dict:
         "user_query": message,
         "attempts": 0,
         "clarity_status": None,
+        "clarification_question": None,
         "clarified_query": None,
         "research_findings": None,
         "confidence_score": None,
@@ -78,25 +70,32 @@ def _build_initial_state(message: str, template: str = "standard") -> dict:
     }
 
 
+def _is_awaiting_clarification(state_values: dict) -> bool:
+    return state_values.get("clarity_status") == "needs_clarification"
+
+
+def _get_clarification_question(state_values: dict) -> str:
+    return (
+        state_values.get("clarification_question")
+        or "Could you please clarify your query?"
+    )
+
+
 # ---------- Endpoints ----------
 
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    """
-    Main chat endpoint.
-
-    - New thread: starts a fresh graph invocation.
-    - Existing completed thread: starts a new invocation on the same thread (history preserved).
-    - Interrupted thread: resumes the paused graph with the user's clarification.
-    """
     graph = _get_graph()
     thread_id = request.thread_id or str(uuid4())
     config = {"configurable": {"thread_id": thread_id}}
 
     try:
         current_state = await graph.aget_state(config)
+        prev_values = current_state.values if current_state else {}
 
+        # Resume an interrupt-paused graph (legacy path) or treat clarification
+        # as a fresh run with the clarified query as the new message.
         if current_state.next:
             result = await graph.ainvoke(Command(resume=request.message), config)
         else:
@@ -106,10 +105,21 @@ async def chat(request: ChatRequest):
             )
 
         new_state = await graph.aget_state(config)
+        new_vals = new_state.values if new_state else {}
+
+        # State-based clarification detection (no interrupt() needed)
+        if _is_awaiting_clarification(new_vals):
+            return ChatResponse(
+                status="needs_clarification",
+                question=_get_clarification_question(new_vals),
+                thread_id=thread_id,
+            )
+
+        # Legacy interrupt detection
         if new_state.next:
             return ChatResponse(
                 status="needs_clarification",
-                question=_extract_interrupt_question(new_state),
+                question=_get_clarification_question(new_vals),
                 thread_id=thread_id,
             )
 
@@ -133,19 +143,6 @@ async def chat(request: ChatRequest):
 
 @router.post("/chat/stream")
 async def chat_stream(request: ChatRequest):
-    """
-    Streaming chat endpoint using Server-Sent Events.
-
-    Emits agent lifecycle events so the frontend can render a live activity timeline.
-
-    Event types:
-      { type: "agent_start", agent: "Research Agent", thread_id: "..." }
-      { type: "agent_end",   agent: "Research Agent", output: {...} }
-      { type: "needs_clarification", question: "...", thread_id: "..." }
-      { type: "final", response: "...", confidence_score: 8, sources: [...], thread_id: "..." }
-      { type: "error", message: "..." }
-      data: [DONE]
-    """
     graph = _get_graph()
     thread_id = request.thread_id or str(uuid4())
     config = {"configurable": {"thread_id": thread_id}}
@@ -190,29 +187,40 @@ async def chat_stream(request: ChatRequest):
                     )
 
         except Exception as exc:
-            import traceback
-            logger.error("SSE stream error: %s\n%s", exc, traceback.format_exc())
-            yield _sse({"type": "error", "message": str(exc)})
+            logger.error("SSE stream error: %s", exc, exc_info=True)
+            # Suppress LangGraph interrupt-related config errors — final_state handles them
+            if "get_config" not in str(exc) and "runnable context" not in str(exc):
+                yield _sse({"type": "error", "message": str(exc)})
 
         # Determine final outcome after the stream completes
         final_state = await graph.aget_state(config)
+        final_vals = final_state.values if final_state else {}
 
-        if final_state.next:
+        # State-based clarification (preferred path — no interrupt() required)
+        if _is_awaiting_clarification(final_vals):
             yield _sse(
                 {
                     "type": "needs_clarification",
-                    "question": _extract_interrupt_question(final_state),
+                    "question": _get_clarification_question(final_vals),
+                    "thread_id": thread_id,
+                }
+            )
+        # Legacy interrupt-based clarification
+        elif final_state.next:
+            yield _sse(
+                {
+                    "type": "needs_clarification",
+                    "question": _get_clarification_question(final_vals),
                     "thread_id": thread_id,
                 }
             )
         else:
-            vals = final_state.values
             yield _sse(
                 {
                     "type": "final",
-                    "response": vals.get("final_response", ""),
-                    "confidence_score": vals.get("confidence_score"),
-                    "sources": vals.get("sources") or [],
+                    "response": final_vals.get("final_response", ""),
+                    "confidence_score": final_vals.get("confidence_score"),
+                    "sources": final_vals.get("sources") or [],
                     "thread_id": thread_id,
                 }
             )
