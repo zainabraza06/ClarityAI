@@ -39,12 +39,20 @@ Be accurate -- a false high score skips quality checks."""
 
 MAX_TOOL_RESULT_CHARS = 3000
 
-_URL_RE = re.compile(r'https?://[^\s\'"<>\]\)]+')
+_URL_RE = re.compile(r'https?://[^\s\'"<>\]\)\\]+')
 _VALID_TIME_RANGES = {"day", "week", "month", "year"}
+_URL_JUNK_RE = re.compile(r'(\\n.*|\\t.*|/Content:.*)', re.IGNORECASE)
 
 
 def _extract_urls(text: str) -> List[str]:
-    return [u.rstrip(".,;)") for u in _URL_RE.findall(text)]
+    urls = []
+    seen_base: set = set()
+    for raw in _URL_RE.findall(text):
+        url = _URL_JUNK_RE.sub("", raw).rstrip(".,;)")
+        if url and url not in seen_base:
+            seen_base.add(url)
+            urls.append(url)
+    return urls
 
 
 def _content_str(content) -> str:
@@ -105,22 +113,29 @@ def create_research_node(tools: list):
             except Exception:
                 pass
 
-        # 2. Search uploaded documents
+        # 2. Search uploaded documents — filter chunks to only those relevant to the query
         doc_context = ""
         doc_filenames: List[str] = []
         if _DOCS_AVAILABLE:
             try:
                 chunks = await _search_chunks(query)
                 if chunks:
-                    doc_context = (
-                        "\n\n## Context from Uploaded Documents\n"
-                        "IMPORTANT: Content below is from the user's uploaded files. "
-                        "When referencing it, explicitly say 'Per the uploaded document [filename]:'\n"
-                    )
-                    for c in chunks:
-                        doc_context += f"\n[Uploaded: {c['filename']}]:\n{c['content'][:600]}\n"
-                        if c["filename"] not in doc_filenames:
-                            doc_filenames.append(c["filename"])
+                    # Keep only chunks whose content contains at least one query keyword
+                    query_keywords = [w.lower() for w in query.split() if len(w) > 3]
+                    relevant = [
+                        c for c in chunks
+                        if any(kw in c["content"].lower() for kw in query_keywords)
+                    ]
+                    if relevant:
+                        doc_context = (
+                            "\n\n## Context from Uploaded Documents\n"
+                            "IMPORTANT: Content below is from the user's uploaded files. "
+                            "When referencing it, explicitly say 'Per the uploaded document [filename]:'\n"
+                        )
+                        for c in relevant:
+                            doc_context += f"\n[Uploaded: {c['filename']}]:\n{c['content'][:600]}\n"
+                            if c["filename"] not in doc_filenames:
+                                doc_filenames.append(c["filename"])
             except Exception:
                 pass
 
