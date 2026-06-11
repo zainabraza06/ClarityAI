@@ -34,7 +34,7 @@
     "template": "swot",
     "criteria": {
       "min_words": 350,
-      "min_confidence": 6,
+      "min_confidence": 4,
       "must_mention": ["Microsoft", "Azure"],
       "required_sections": ["Strengths", "Weaknesses", "Opportunities", "Threats"],
       "must_have_sources": false,

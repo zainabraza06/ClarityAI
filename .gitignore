@@ -45,3 +45,11 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Databases and checkpoints
+*.db
+*.db-shm
+*.db-wal
+
+# Eval results (timestamped output files)
+backend/evals/results_*.json

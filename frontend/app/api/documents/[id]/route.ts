@@ -4,9 +4,10 @@ const BACKEND = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const upstream = await fetch(`${BACKEND}/api/documents/${params.id}`, {
+  const resolvedParams = await params;
+  const upstream = await fetch(`${BACKEND}/api/documents/${resolvedParams.id}`, {
     method: "DELETE",
   });
 
