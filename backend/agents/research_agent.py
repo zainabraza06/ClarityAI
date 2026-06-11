@@ -39,18 +39,20 @@ Be accurate -- a false high score skips quality checks."""
 
 MAX_TOOL_RESULT_CHARS = 3000
 
-_URL_RE = re.compile(r'https?://[^\s\'"<>\]\)\\]+')
+_URL_RE = re.compile(r'https?://[^\s\'"<>\]\)]+')
 _VALID_TIME_RANGES = {"day", "week", "month", "year"}
-_URL_JUNK_RE = re.compile(r'(\\n.*|\\t.*|/Content:.*)', re.IGNORECASE)
 
 
 def _extract_urls(text: str) -> List[str]:
+    # Normalize literal \n / \t escape sequences to real whitespace so the
+    # URL regex stops at them rather than including them in the URL
+    normalized = text.replace("\\n", "\n").replace("\\t", "\t")
     urls = []
-    seen_base: set = set()
-    for raw in _URL_RE.findall(text):
-        url = _URL_JUNK_RE.sub("", raw).rstrip(".,;)")
-        if url and url not in seen_base:
-            seen_base.add(url)
+    seen: set = set()
+    for raw in _URL_RE.findall(normalized):
+        url = raw.rstrip(".,;)")
+        if url and url not in seen:
+            seen.add(url)
             urls.append(url)
     return urls
 
@@ -113,19 +115,34 @@ def create_research_node(tools: list):
             except Exception:
                 pass
 
-        # 2. Search uploaded documents — filter chunks to only those relevant to the query
+        # 2. Search uploaded documents — only when the query explicitly asks for them
+        _DOC_TRIGGERS = {"document", "documents", "uploaded", "upload", "file", "files", "pdf", "attachment"}
+        query_asks_for_docs = any(t in query.lower() for t in _DOC_TRIGGERS)
+
         doc_context = ""
         doc_filenames: List[str] = []
-        if _DOCS_AVAILABLE:
+        if _DOCS_AVAILABLE and query_asks_for_docs:
             try:
                 chunks = await _search_chunks(query)
                 if chunks:
-                    # Keep only chunks whose content contains at least one query keyword
-                    query_keywords = [w.lower() for w in query.split() if len(w) > 3]
-                    relevant = [
-                        c for c in chunks
-                        if any(kw in c["content"].lower() for kw in query_keywords)
-                    ]
+                    # Primary subject = first capitalised word of the query
+                    query_words = query.split()
+                    primary = next(
+                        (w for w in query_words if len(w) > 3 and w[0].isupper()), None
+                    )
+                    # Require the primary subject to appear at least twice in the chunk
+                    # (filters out documents that only mention the company in passing)
+                    if primary:
+                        relevant = [
+                            c for c in chunks
+                            if c["content"].lower().count(primary.lower()) >= 2
+                        ]
+                    else:
+                        query_keywords = [w.lower() for w in query_words if len(w) > 3]
+                        relevant = [
+                            c for c in chunks
+                            if any(kw in c["content"].lower() for kw in query_keywords)
+                        ]
                     if relevant:
                         doc_context = (
                             "\n\n## Context from Uploaded Documents\n"
