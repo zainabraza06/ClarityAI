@@ -201,6 +201,7 @@ async def synthesis_node(state: dict) -> dict:
     findings = state.get("research_findings", "No research findings available.")
     confidence = state.get("confidence_score", 0)
     sources = state.get("sources") or []
+    doc_sources = state.get("document_sources") or []
     messages = state.get("messages", [])
 
     history_lines = []
@@ -209,13 +210,23 @@ async def synthesis_node(state: dict) -> dict:
         history_lines.append(f"{role}: {m.content[:500]}")
     history = "\n".join(history_lines) if history_lines else "No prior conversation."
 
+    doc_instruction = ""
+    if doc_sources:
+        names = ", ".join(doc_sources)
+        doc_instruction = (
+            f"\n\nUploaded documents used in this research: {names}\n"
+            "IMPORTANT: Add a '## From Uploaded Documents' section BEFORE the Key Takeaways "
+            "that explicitly quotes or summarises findings drawn from those uploaded files. "
+            "Clearly distinguish document-sourced content from web-sourced content."
+        )
+
     prompt = f"""Conversation history:
 {history}
 
 Current query: {query}
 
 Research findings (confidence: {confidence}/10):
-{findings}
+{findings}{doc_instruction}
 
 Generate a report based on these findings using the specified format."""
 
@@ -226,10 +237,20 @@ Generate a report based on these findings using the specified format."""
 
     final_response = response.content
 
-    # Append sources section if URLs were collected
+    # Build combined sources section — documents first, then web URLs
+    source_parts = []
+    if doc_sources:
+        source_parts.append("**Uploaded Documents**")
+        for name in doc_sources:
+            source_parts.append(f"- {name}")
     if sources:
-        source_lines = "\n".join(f"- {url}" for url in sources[:8])
-        final_response = f"{final_response}\n\n## Sources\n{source_lines}"
+        if doc_sources:
+            source_parts.append("\n**Web Sources**")
+        for url in sources[:8]:
+            source_parts.append(f"- {url}")
+
+    if source_parts:
+        final_response = f"{final_response}\n\n## Sources\n" + "\n".join(source_parts)
 
     return {
         "final_response": final_response,

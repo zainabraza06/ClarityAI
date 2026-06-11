@@ -1,11 +1,11 @@
 """
-LLM provider with three-tier fallback: OpenRouter → Groq → Gemini.
+LLM provider with four-tier fallback: OpenRouter → Groq → Gemini → Mistral.
 
 Only providers whose API key is present in the environment are included.
 The first available key in priority order becomes the primary; the rest form
 the fallback chain via LangChain's built-in `with_fallbacks()`.
 
-Priority order:  OPENROUTER_API_KEY  →  GROQ_API_KEY  →  GOOGLE_API_KEY
+Priority order:  OPENROUTER_API_KEY  →  GROQ_API_KEY  →  GOOGLE_API_KEY  →  MISTRAL_API_KEY
 
 Usage:
     from llm.provider import create_llm, create_structured_llm, create_tool_llm
@@ -30,6 +30,7 @@ _OPENROUTER_MODEL = os.environ.get(
 )
 _GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
 _GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+_MISTRAL_MODEL = os.environ.get("MISTRAL_MODEL", "mistral-small-latest")
 
 
 def _build_providers(temperature: float) -> List[BaseChatModel]:
@@ -37,6 +38,7 @@ def _build_providers(temperature: float) -> List[BaseChatModel]:
     Build an ordered list of available LLM providers.
     Providers are included only when their API key is set.
     Set LLM_PROVIDERS=groq to use Groq only (useful when other providers are rate-limited).
+    Set LLM_PROVIDERS=mistral to use Mistral only.
     """
     providers: List[BaseChatModel] = []
     _only = os.environ.get("LLM_PROVIDERS", "").lower()  # e.g. "groq" or "" for all
@@ -99,10 +101,27 @@ def _build_providers(temperature: float) -> List[BaseChatModel]:
                 "langchain-google-genai not installed — skipping Gemini"
             )
 
+    # ── 4. Mistral (no daily cap on free tier, 1 req/sec) ───────────────────
+    if os.environ.get("MISTRAL_API_KEY") and (_only in ("", "mistral")):
+        try:
+            from langchain_mistralai import ChatMistralAI
+
+            providers.append(
+                ChatMistralAI(
+                    model=_MISTRAL_MODEL,
+                    api_key=os.environ["MISTRAL_API_KEY"],
+                    temperature=temperature,
+                    max_retries=0,
+                )
+            )
+            logger.info("LLM provider: Mistral (%s)", _MISTRAL_MODEL)
+        except ImportError:
+            logger.warning("langchain-mistralai not installed — skipping Mistral")
+
     if not providers:
         raise EnvironmentError(
             "No LLM API key found. Set at least one of: "
-            "OPENROUTER_API_KEY, GROQ_API_KEY, GOOGLE_API_KEY"
+            "OPENROUTER_API_KEY, GROQ_API_KEY, GOOGLE_API_KEY, MISTRAL_API_KEY"
         )
 
     if len(providers) > 1:
@@ -151,4 +170,6 @@ def get_provider_names() -> List[str]:
         names.append("Groq")
     if os.environ.get("GOOGLE_API_KEY") and (_only in ("", "gemini", "google")):
         names.append("Gemini")
+    if os.environ.get("MISTRAL_API_KEY") and (_only in ("", "mistral")):
+        names.append("Mistral")
     return names

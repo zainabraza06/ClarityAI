@@ -21,7 +21,8 @@ Search Strategy:
 - Maximum 3 search rounds total
 
 After searching, write a comprehensive research summary (max 1000 words) covering all gathered information.
-If real-time financial data or document context is provided above, incorporate it into your summary."""
+If real-time financial data or document context is provided above, incorporate it into your summary.
+When content is labeled [Uploaded: filename], explicitly reference it as 'Per the uploaded document [filename]:' in your summary."""
 
 
 ANALYSIS_SYSTEM_PROMPT = """You are a business intelligence analyst. Evaluate the research gathered and produce a structured summary.
@@ -30,11 +31,11 @@ Assign an honest confidence score (0-10):
 - 9-10: Rich, comprehensive data with recent news, financials, and strategic context
 - 7-8: Good coverage across most dimensions, minor gaps
 - 5-6: Adequate for basic research, some key areas missing
-- 3-4: Sparse — only general or partial information found
+- 3-4: Sparse -- only general or partial information found
 - 0-2: Very little useful data; mostly generic or no company-specific info
 
 The confidence score determines whether the research proceeds to synthesis or triggers validation.
-Be accurate — a false high score skips quality checks."""
+Be accurate -- a false high score skips quality checks."""
 
 MAX_TOOL_RESULT_CHARS = 3000
 
@@ -47,13 +48,13 @@ def _extract_urls(text: str) -> List[str]:
 
 
 def _sanitize_tool_args(tool_name: str, args: dict) -> dict:
-    """Strip invalid time_range values — Groq/Gemini reject anything outside the enum."""
+    """Strip invalid time_range values -- Groq/Gemini reject anything outside the enum."""
     if "time_range" in args and args["time_range"] not in _VALID_TIME_RANGES:
         return {k: v for k, v in args.items() if k != "time_range"}
     return args
 
 
-# Module-level import attempt for document store — fails gracefully if unavailable
+# Module-level import attempt for document store -- fails gracefully if unavailable
 try:
     from documents.store import search_chunks as _search_chunks
     _DOCS_AVAILABLE = True
@@ -77,7 +78,7 @@ def create_research_node(tools: list):
             history_lines.append(f"{role}: {m.content[:150]}")
         history = "\n".join(history_lines) if history_lines else "No prior conversation."
 
-        # ── 1. Proactively fetch real-time financial data ──────────────────
+        # 1. Proactively fetch real-time financial data
         financial_context = ""
         fin_tool = tools_by_name.get("get_financial_data")
         if fin_tool:
@@ -94,19 +95,26 @@ def create_research_node(tools: list):
             except Exception:
                 pass
 
-        # ── 2. Search uploaded documents ──────────────────────────────────
+        # 2. Search uploaded documents
         doc_context = ""
+        doc_filenames: List[str] = []
         if _DOCS_AVAILABLE:
             try:
                 chunks = await _search_chunks(query)
                 if chunks:
-                    doc_context = "\n\n## Context from Uploaded Documents\n"
+                    doc_context = (
+                        "\n\n## Context from Uploaded Documents\n"
+                        "IMPORTANT: Content below is from the user's uploaded files. "
+                        "When referencing it, explicitly say 'Per the uploaded document [filename]:'\n"
+                    )
                     for c in chunks:
-                        doc_context += f"\n[{c['filename']}]:\n{c['content'][:600]}\n"
+                        doc_context += f"\n[Uploaded: {c['filename']}]:\n{c['content'][:600]}\n"
+                        if c["filename"] not in doc_filenames:
+                            doc_filenames.append(c["filename"])
             except Exception:
                 pass
 
-        # ── 3. Web search tool-calling loop (ReAct pattern) ───────────────
+        # 3. Web search tool-calling loop (ReAct pattern)
         research_messages = [
             SystemMessage(content=RESEARCH_SYSTEM_PROMPT),
             HumanMessage(
@@ -149,7 +157,7 @@ def create_research_node(tools: list):
 
         raw_findings = (response.content or "No research data retrieved.")[:4000]
 
-        # ── 4. Collect source URLs ────────────────────────────────────────
+        # 4. Collect source URLs
         seen: set = set()
         sources: List[str] = []
         for content in all_tool_results:
@@ -162,7 +170,7 @@ def create_research_node(tools: list):
         if financial_context:
             raw_findings = financial_context.strip() + "\n\n" + raw_findings
 
-        # ── 5. Structured analysis + confidence scoring ───────────────────
+        # 5. Structured analysis + confidence scoring
         analysis_llm = create_structured_llm(ResearchOutput, temperature=0)
         analysis: ResearchOutput = await analysis_llm.ainvoke([
             SystemMessage(content=ANALYSIS_SYSTEM_PROMPT),
@@ -176,6 +184,7 @@ def create_research_node(tools: list):
             "confidence_score": max(0, min(10, analysis.confidence_score)),
             "attempts": state.get("attempts", 0) + 1,
             "sources": sources,
+            "document_sources": doc_filenames if doc_filenames else None,
         }
 
     return research_node

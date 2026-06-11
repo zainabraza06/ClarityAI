@@ -1,0 +1,10 @@
+INFO:     Started server process [12596]
+INFO:     Waiting for application startup.
+2026-06-11 12:52:01,278  INFO  clarityai — Document store ready.
+2026-06-11 12:52:01,290  INFO  clarityai — Starting Tavily MCP server...
+Tavily MCP server running on stdio
+2026-06-11 12:52:05,970  INFO  clarityai — Tools loaded: ['tavily_search', 'tavily_extract', 'tavily_crawl', 'tavily_map', 'tavily_research', 'get_financial_data']
+2026-06-11 12:52:05,974  INFO  clarityai — Persistent SQLite checkpointer active (clarity_checkpoints.db).
+2026-06-11 12:52:06,006  INFO  clarityai — LangGraph workflow compiled and ready.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
