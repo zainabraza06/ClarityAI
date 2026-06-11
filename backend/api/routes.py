@@ -1,6 +1,9 @@
 import json
+import logging
 from typing import Optional
 from uuid import uuid4
+
+logger = logging.getLogger("clarityai.routes")
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -187,6 +190,8 @@ async def chat_stream(request: ChatRequest):
                     )
 
         except Exception as exc:
+            import traceback
+            logger.error("SSE stream error: %s\n%s", exc, traceback.format_exc())
             yield _sse({"type": "error", "message": str(exc)})
 
         # Determine final outcome after the stream completes
