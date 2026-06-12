@@ -240,21 +240,6 @@ Generate a report based on these findings using the specified format."""
 
     final_response = response.content
 
-    # Build combined sources section — documents first, then web URLs
-    source_parts = []
-    if doc_sources:
-        source_parts.append("**Uploaded Documents**")
-        for name in doc_sources:
-            source_parts.append(f"- {name}")
-    if sources:
-        if doc_sources:
-            source_parts.append("\n**Web Sources**")
-        for url in sources[:8]:
-            source_parts.append(f"- {url}")
-
-    if source_parts:
-        final_response = f"{final_response}\n\n## Sources\n" + "\n".join(source_parts)
-
     return {
         "final_response": final_response,
         "messages": [AIMessage(content=final_response)],
