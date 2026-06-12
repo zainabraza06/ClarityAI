@@ -67,6 +67,7 @@ def _build_initial_state(message: str, template: str = "standard") -> dict:
         "template": template,
         "sources": None,
         "document_sources": None,
+        "document_query": False,
     }
 
 

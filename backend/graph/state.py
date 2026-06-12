@@ -19,3 +19,4 @@ class AgentState(TypedDict):
     template: Optional[str]   # standard | investor_memo | competitor_analysis | swot | comparison
     sources: Optional[List[str]]  # source URLs collected during research
     document_sources: Optional[List[str]]  # filenames of uploaded documents used in research
+    document_query: Optional[bool]          # True when query is specifically about uploaded docs

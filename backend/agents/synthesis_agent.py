@@ -191,18 +191,44 @@ _TEMPLATES: dict[str, str] = {
 }
 
 
+_DOCUMENT_QA_PROMPT = """You are a document analyst for ClarityAI.
+
+The user is asking a specific question about content in their uploaded documents.
+Answer the question directly and completely using ONLY the information found in the research findings.
+
+Format your response as:
+
+## Answer
+A direct, thorough answer to the user's question based on the document content.
+
+## Relevant Excerpts
+Quote or closely paraphrase the most relevant sections from the document that support your answer.
+
+## Additional Context
+Any background or clarification that helps interpret the document content (2-3 sentences max).
+
+Rules:
+- Stay focused on what the document actually says — do not invent or assume information
+- If the document does not contain information relevant to the question, say so clearly
+- Do NOT produce a full business report — just answer the question"""
+
+
 async def synthesis_node(state: dict) -> dict:
     llm = create_llm(temperature=0)
-
-    template = state.get("template") or "standard"
-    system_prompt = _TEMPLATES.get(template, _STANDARD_PROMPT)
 
     query = state.get("clarified_query") or state.get("user_query", "")
     findings = state.get("research_findings", "No research findings available.")
     confidence = state.get("confidence_score", 0)
-    sources = state.get("sources") or []
     doc_sources = state.get("document_sources") or []
+    document_query = state.get("document_query", False)
     messages = state.get("messages", [])
+
+    # Use focused Q&A prompt when query is specifically about uploaded documents
+    if document_query and doc_sources:
+        system_prompt = _DOCUMENT_QA_PROMPT
+    else:
+        template = state.get("template") or "standard"
+        system_prompt = _TEMPLATES.get(template, _STANDARD_PROMPT)
 
     history_lines = []
     for m in messages[-6:]:
@@ -213,25 +239,15 @@ async def synthesis_node(state: dict) -> dict:
         history_lines.append(f"{role}: {content[:500]}")
     history = "\n".join(history_lines) if history_lines else "No prior conversation."
 
-    doc_instruction = ""
-    if doc_sources:
-        names = ", ".join(doc_sources)
-        doc_instruction = (
-            f"\n\nUploaded documents used in this research: {names}\n"
-            "IMPORTANT: Add a '## From Uploaded Documents' section BEFORE the Key Takeaways "
-            "that explicitly quotes or summarises findings drawn from those uploaded files. "
-            "Clearly distinguish document-sourced content from web-sourced content."
-        )
-
     prompt = f"""Conversation history:
 {history}
 
 Current query: {query}
 
 Research findings (confidence: {confidence}/10):
-{findings}{doc_instruction}
+{findings}
 
-Generate a report based on these findings using the specified format."""
+Generate a response based on these findings using the specified format."""
 
     response = await llm.ainvoke([
         SystemMessage(content=system_prompt),

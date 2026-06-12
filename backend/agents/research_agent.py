@@ -125,13 +125,14 @@ def create_research_node(tools: list):
             try:
                 chunks = await _search_chunks(query)
                 if chunks:
-                    # Primary subject = first capitalised word of the query
                     query_words = query.split()
-                    primary = next(
+                    # Extract primary subject — strip possessives so "NVIDIA's" → "NVIDIA"
+                    primary_raw = next(
                         (w for w in query_words if len(w) > 3 and w[0].isupper()), None
                     )
+                    primary = re.sub(r"'s?$|s'$", "", primary_raw) if primary_raw else None
+
                     # Require the primary subject to appear at least twice in the chunk
-                    # (filters out documents that only mention the company in passing)
                     if primary:
                         relevant = [
                             c for c in chunks
@@ -227,6 +228,7 @@ def create_research_node(tools: list):
             "attempts": state.get("attempts", 0) + 1,
             "sources": sources,
             "document_sources": doc_filenames if doc_filenames else None,
+            "document_query": query_asks_for_docs,
         }
 
     return research_node
