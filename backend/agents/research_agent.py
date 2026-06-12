@@ -42,15 +42,6 @@ MAX_TOOL_RESULT_CHARS = 3000
 _URL_RE = re.compile(r'https?://[^\s\'"<>\]\)]+')
 _VALID_TIME_RANGES = {"day", "week", "month", "year"}
 
-# Common English words that should never be treated as a company/subject name
-_SUBJECT_STOP = {
-    "what", "does", "have", "tell", "give", "show", "find", "make", "take",
-    "about", "with", "from", "into", "onto", "over", "under", "this", "that",
-    "these", "those", "your", "their", "when", "where", "which", "will",
-    "would", "could", "should", "analyze", "research", "write", "explain",
-    "describe", "compare", "list", "look", "help", "says", "said",
-}
-
 
 def _extract_urls(text: str) -> List[str]:
     # Normalize literal \n / \t escape sequences to real whitespace so the
@@ -134,32 +125,9 @@ def create_research_node(tools: list):
             try:
                 chunks = await _search_chunks(query)
                 if chunks:
-                    query_words = query.split()
-                    # Extract primary subject — skip common stop words so "What does ... NVIDIA's" → "NVIDIA"
-                    primary_raw = next(
-                        (
-                            w for w in query_words
-                            if len(w) > 3
-                            and w[0].isupper()
-                            and w.rstrip("'s?.,!:").lower() not in _SUBJECT_STOP
-                        ),
-                        None,
-                    )
-                    # Strip possessive/punctuation: "NVIDIA's" → "NVIDIA", "risks?" → "risks"
-                    primary = re.sub(r"['’]s?$|s'$", "", primary_raw.rstrip("?.,!:")) if primary_raw else None
-
-                    # Keep chunks where the subject appears at least once
-                    if primary:
-                        relevant = [
-                            c for c in chunks
-                            if c["content"].lower().count(primary.lower()) >= 1
-                        ]
-                    else:
-                        query_keywords = [w.lower() for w in query_words if len(w) > 3]
-                        relevant = [
-                            c for c in chunks
-                            if any(kw in c["content"].lower() for kw in query_keywords)
-                        ]
+                    # Trust the search results directly — _search_chunks already
+                    # ranks by relevance to the query via FTS/vector similarity.
+                    relevant = chunks
                     if relevant:
                         doc_context = (
                             "\n\n## Context from Uploaded Documents\n"
