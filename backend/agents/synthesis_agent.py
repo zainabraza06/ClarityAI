@@ -224,7 +224,7 @@ async def synthesis_node(state: dict) -> dict:
     messages = state.get("messages", [])
 
     # Use focused Q&A prompt when query is specifically about uploaded documents
-    if document_query and doc_sources:
+    if document_query:
         system_prompt = _DOCUMENT_QA_PROMPT
     else:
         template = state.get("template") or "standard"

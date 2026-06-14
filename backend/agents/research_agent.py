@@ -193,7 +193,9 @@ def create_research_node(tools: list):
                     seen.add(url)
                     sources.append(url)
 
-        # Append financial context to findings so synthesis can use it
+        # Prepend document and financial context so the analysis LLM always sees them
+        if doc_context:
+            raw_findings = doc_context.strip() + "\n\n" + raw_findings
         if financial_context:
             raw_findings = financial_context.strip() + "\n\n" + raw_findings
 
