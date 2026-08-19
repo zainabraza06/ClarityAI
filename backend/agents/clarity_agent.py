@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 from typing import Literal, Optional
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -21,11 +22,14 @@ A query is CLEAR when:
 - Enough context exists to proceed with research
 - The user is asking about an uploaded document, file, PDF, or attachment
   (the document itself is the context — do not ask for Apple, Tesla, or another public company)
+- Several files are uploaded but the user names one of them, or asks about all of them
 
 A query NEEDS_CLARIFICATION when:
 - No company name is provided AND the query is not about uploaded documents
 - The company name is genuinely ambiguous (e.g., "Apple" without context could mean Apple Inc. or Apple Corps)
 - The query is too vague to research meaningfully (e.g., "tell me about tech companies")
+- Two or more documents are uploaded and the user asks about "the document" without saying which file
+  (ask which filename — never ask for Apple or Tesla)
 
 IMPORTANT: Check the conversation history first. If a company was mentioned earlier in the conversation,
 a follow-up like "What about their competitors?" is CLEAR — the company is already established.
@@ -49,6 +53,33 @@ _DOC_TRIGGERS = re.compile(
     r"\b(document|documents|uploaded|upload|file|files|pdf|attachment|briefing)\b",
     re.I,
 )
+
+
+_ALL_DOCS = re.compile(
+    r"\b(all|both|every|each)\b.{0,40}\b(document|documents|file|files|pdfs?|uploads?)\b"
+    r"|\b(document|documents|file|files)\b.{0,20}\b(all|both)\b",
+    re.I,
+)
+
+
+def _is_document_query(query: str) -> bool:
+    return bool(_DOC_TRIGGERS.search(query or ""))
+
+
+def _asks_for_all_documents(query: str) -> bool:
+    return bool(_ALL_DOCS.search(query or ""))
+
+
+def _names_a_document(query: str, filenames: list[str]) -> bool:
+    ql = (query or "").lower()
+    for name in filenames:
+        stem = Path(name).stem.lower()
+        if name.lower() in ql or (len(stem) >= 4 and stem in ql):
+            return True
+        tokens = re.split(r"[-_\s.]+", stem)
+        if any(len(t) >= 4 and t.lower() in ql for t in tokens):
+            return True
+    return False
 
 
 def _is_explicit_research_query(query: str) -> bool:
@@ -75,6 +106,31 @@ def _is_explicit_research_query(query: str) -> bool:
 
 async def clarity_node(state: dict) -> dict:
     user_query = state.get("user_query", "")
+
+    filenames: list[str] = []
+    try:
+        from documents.store import list_documents
+        filenames = [d["filename"] for d in await list_documents()]
+    except Exception:
+        filenames = []
+
+    if _is_document_query(user_query) and len(filenames) >= 2:
+        if _asks_for_all_documents(user_query) or _names_a_document(user_query, filenames):
+            return {
+                "clarity_status": "clear",
+                "clarified_query": user_query,
+                "clarification_question": None,
+            }
+        listed = ", ".join(f"'{n}'" for n in filenames[:8])
+        extra = " (and more)" if len(filenames) > 8 else ""
+        return {
+            "clarity_status": "needs_clarification",
+            "clarification_question": (
+                f"You have {len(filenames)} uploaded documents: {listed}{extra}. "
+                "Which file should I use, or should I use all of them?"
+            ),
+            "clarified_query": None,
+        }
 
     if _is_explicit_research_query(user_query):
         return {

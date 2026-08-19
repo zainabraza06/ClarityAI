@@ -1,0 +1,35 @@
+Northwind Analytics Inc. — FY2025 Internal Briefing
+Confidential — for ClarityAI document-upload testing only
+
+Company overview
+Northwind Analytics Inc. is a privately held software company headquartered in Austin, Texas.
+It sells a cloud analytics platform used by mid-market retailers and logistics firms.
+Founded in 2017 by Maya Chen and Omar Haddad. Employees: 412 as of 31 March 2025.
+
+Financial highlights (fiscal year ended 31 March 2025)
+- Annual revenue: $86.4 million (up 28% year over year)
+- Recurring revenue (ARR): $79.1 million
+- Gross margin: 71%
+- Operating loss: $4.2 million (improved from $11.8 million loss in FY2024)
+- Cash and equivalents: $31.5 million
+- Remaining performance obligations (RPO): $52.0 million
+
+Product
+The flagship product is Northwind Pulse, a warehouse-native analytics suite.
+In January 2025 the company launched Pulse Forecast, a demand-planning add-on.
+Pulse Forecast contributed $6.8 million of new ARR in its first quarter.
+
+Customers and market
+- 1,140 paying customers at year end
+- Largest customer: Harborline Logistics (8% of revenue)
+- Net revenue retention: 118%
+- Primary competitors: Tableau, Power BI, and Looker
+
+Risks called out in this briefing
+- Customer concentration: top 10 accounts are 34% of revenue
+- Pulse Forecast is not yet profitable on a contribution-margin basis
+- Two open SOC 2 Type II findings related to access reviews (target close: Q2 FY2026)
+
+Guidance for FY2026
+Management expects revenue of $108–$112 million and ARR of about $100 million
+if Pulse Forecast attach rates stay above 22%.
