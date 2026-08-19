@@ -144,9 +144,22 @@ def create_research_node(tools: list):
             except Exception:
                 pass
 
-        # 2. Search uploaded documents — only when the query explicitly asks for them
-        _DOC_TRIGGERS = {"document", "documents", "uploaded", "upload", "file", "files", "pdf", "attachment"}
-        query_asks_for_docs = any(t in query.lower() for t in _DOC_TRIGGERS)
+        # 2. Search uploaded documents when the query is about files or names one
+        from documents.store import asks_for_all_documents, is_document_query, list_documents, names_a_document
+
+        stored_names: List[str] = []
+        if _DOCS_AVAILABLE:
+            try:
+                stored_names = [d["filename"] for d in await list_documents()]
+            except Exception:
+                stored_names = []
+
+        query_asks_for_docs = (
+            is_document_query(query)
+            or asks_for_all_documents(query)
+            or names_a_document(query, stored_names)
+            or "user selected document" in query.lower()
+        )
 
         doc_context = ""
         doc_filenames: List[str] = []

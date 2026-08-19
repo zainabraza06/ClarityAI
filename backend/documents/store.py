@@ -135,6 +135,50 @@ async def list_documents() -> List[dict]:
     ]
 
 
+_DOC_QUERY_RE = re.compile(
+    r"\b(document|documents|uploaded|upload|file|files|pdf|attachment|briefing)\b",
+    re.I,
+)
+_ALL_DOCS_RE = re.compile(
+    r"\b(all|both|every|each)\b.{0,40}\b(document|documents|file|files|pdfs?|uploads?)\b"
+    r"|\b(document|documents|file|files)\b.{0,20}\b(all|both)\b"
+    r"|\buse all of them\b|\ball of them\b",
+    re.I,
+)
+_GENERIC_NAME_TOKENS = {
+    "note", "notes", "file", "files", "doc", "docs", "report", "briefing",
+    "internal", "test", "fy2025", "fy2024", "fy2026", "2024", "2025", "2026",
+}
+
+
+def is_document_query(query: str) -> bool:
+    return bool(_DOC_QUERY_RE.search(query or ""))
+
+
+def asks_for_all_documents(query: str) -> bool:
+    return bool(_ALL_DOCS_RE.search(query or ""))
+
+
+def names_a_document(query: str, filenames: List[str]) -> bool:
+    """True when the user named a specific uploaded file (e.g. 'harborline')."""
+    ql = (query or "").lower()
+    if not ql or not filenames:
+        return False
+    for name in filenames:
+        stem = Path(name).stem.lower()
+        if name.lower() in ql:
+            return True
+        tokens = [t for t in re.split(r"[-_\s.]+", stem) if t]
+        distinctive = [
+            t for t in tokens
+            if len(t) >= 5 and t.lower() not in _GENERIC_NAME_TOKENS
+        ]
+        for token in distinctive:
+            if re.search(rf"\b{re.escape(token)}\b", ql, re.I):
+                return True
+    return False
+
+
 async def delete_document(doc_id: str) -> bool:
     async with aiosqlite.connect(str(DB_PATH)) as db:
         await db.execute("DELETE FROM doc_chunks WHERE doc_id = ?", (doc_id,))

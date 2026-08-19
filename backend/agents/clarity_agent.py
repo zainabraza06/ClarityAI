@@ -1,10 +1,15 @@
 import re
-from pathlib import Path
 from typing import Literal, Optional
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from llm.provider import create_structured_llm
+from documents.store import (
+    asks_for_all_documents,
+    is_document_query,
+    list_documents,
+    names_a_document,
+)
 
 
 class ClarityOutput(BaseModel):
@@ -55,33 +60,6 @@ _DOC_TRIGGERS = re.compile(
 )
 
 
-_ALL_DOCS = re.compile(
-    r"\b(all|both|every|each)\b.{0,40}\b(document|documents|file|files|pdfs?|uploads?)\b"
-    r"|\b(document|documents|file|files)\b.{0,20}\b(all|both)\b",
-    re.I,
-)
-
-
-def _is_document_query(query: str) -> bool:
-    return bool(_DOC_TRIGGERS.search(query or ""))
-
-
-def _asks_for_all_documents(query: str) -> bool:
-    return bool(_ALL_DOCS.search(query or ""))
-
-
-def _names_a_document(query: str, filenames: list[str]) -> bool:
-    ql = (query or "").lower()
-    for name in filenames:
-        stem = Path(name).stem.lower()
-        if name.lower() in ql or (len(stem) >= 4 and stem in ql):
-            return True
-        tokens = re.split(r"[-_\s.]+", stem)
-        if any(len(t) >= 4 and t.lower() in ql for t in tokens):
-            return True
-    return False
-
-
 def _is_explicit_research_query(query: str) -> bool:
     """Fast-path: skip LLM when the query already names a company and intent."""
     q = query.strip()
@@ -104,30 +82,50 @@ def _is_explicit_research_query(query: str) -> bool:
     return False
 
 
+def _last_human_text(messages: list) -> str:
+    for m in reversed(messages or []):
+        if isinstance(m, HumanMessage):
+            content = m.content if isinstance(m.content, str) else " ".join(
+                p.get("text", "") if isinstance(p, dict) else str(p) for p in m.content
+            )
+            if content.strip():
+                return content
+    return ""
+
+
 async def clarity_node(state: dict) -> dict:
     user_query = state.get("user_query", "")
+    messages = state.get("messages", [])
 
     filenames: list[str] = []
     try:
-        from documents.store import list_documents
         filenames = [d["filename"] for d in await list_documents()]
     except Exception:
         filenames = []
 
-    if _is_document_query(user_query) and len(filenames) >= 2:
-        if _asks_for_all_documents(user_query) or _names_a_document(user_query, filenames):
-            return {
-                "clarity_status": "clear",
-                "clarified_query": user_query,
-                "clarification_question": None,
-            }
+    named_file = names_a_document(user_query, filenames)
+    wants_all = asks_for_all_documents(user_query)
+    prior = _last_human_text(messages[:-1] if messages else [])
+
+    # Short replies like "harborline" / "the harborline one" after a file picker
+    if len(filenames) >= 2 and (named_file or wants_all):
+        combined = user_query
+        if prior and prior.strip().lower() != user_query.strip().lower():
+            combined = f"{prior}\nUser selected document: {user_query}"
+        return {
+            "clarity_status": "clear",
+            "clarified_query": combined,
+            "clarification_question": None,
+        }
+
+    if is_document_query(user_query) and len(filenames) >= 2:
         listed = ", ".join(f"'{n}'" for n in filenames[:8])
         extra = " (and more)" if len(filenames) > 8 else ""
         return {
             "clarity_status": "needs_clarification",
             "clarification_question": (
                 f"You have {len(filenames)} uploaded documents: {listed}{extra}. "
-                "Which file should I use, or should I use all of them?"
+                "Which file should I use (e.g. Harborline), or should I use all of them?"
             ),
             "clarified_query": None,
         }
