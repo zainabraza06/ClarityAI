@@ -69,7 +69,7 @@ def stream_events(path, body):
 # TEST 1 — Health check + fallback chain
 # ─────────────────────────────────────────────
 print("=" * 60)
-print("TEST 1: Health check + LLM fallback chain")
+print("TEST 1: Health check + LLM provider")
 health = get("/api/health")
 print(f"  Status     : {health.get('status')}")
 print(f"  Tools      : {health.get('tools_loaded')}")
@@ -78,7 +78,7 @@ print(f"  LLM chain  : {providers}")
 assert health.get("status") == "ok", "Health check failed"
 assert health.get("tools_loaded") is True, "Tavily tools not loaded"
 assert len(providers) >= 1, f"Expected ≥1 provider in chain, got {providers}"
-print("PASS: Health check + fallback chain verified\n")
+print("PASS: Health check + LLM provider verified\n")
 
 
 # ─────────────────────────────────────────────
@@ -184,6 +184,6 @@ print("  [x] Tavily MCP search integration")
 print("  [x] Human-in-the-loop clarification (interrupt/resume)")
 print("  [x] Multi-turn conversation memory (thread_id)")
 print("  [x] Conditional routing (validation retry loop)")
-print("  [x] Three-tier LLM fallback (OpenRouter -> Groq -> Gemini)")
+print("  [x] Mistral LLM provider")
 print("  [x] SSE streaming with real-time agent events")
 print("=" * 60)
