@@ -111,8 +111,11 @@ except ImportError:
 def create_research_node(tools: list):
     """Factory that captures MCP tools and financial tool in a closure."""
     tools_by_name = {tool.name: tool for tool in tools}
-    # The LLM tool loop uses only search tools; financial data is fetched proactively
-    search_tools = [t for t in tools if t.name != "get_financial_data"]
+    # Bind only Tavily search — crawl/map/research hang and blow the API timeout
+    search_tools = [
+        t for t in tools
+        if t.name != "get_financial_data" and "search" in t.name.lower()
+    ]
 
     async def research_node(state: dict) -> dict:
         query = state.get("clarified_query") or state.get("user_query", "")
