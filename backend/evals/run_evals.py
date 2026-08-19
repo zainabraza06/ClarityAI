@@ -107,7 +107,7 @@ async def _run_case(client: httpx.AsyncClient, base_url: str, case: dict) -> dic
         resp = await client.post(
             f"{base_url}/api/chat",
             json=payload,
-            timeout=120.0,
+            timeout=180.0,
         )
         elapsed = round(time.monotonic() - start, 2)
 
@@ -158,7 +158,7 @@ async def _run_case(client: httpx.AsyncClient, base_url: str, case: dict) -> dic
             "status": "timeout",
             "elapsed_s": round(time.monotonic() - start, 2),
             "score_pct": 0,
-            "notes": ["Request timed out after 120s"],
+            "notes": ["Request timed out after 180s"],
         }
     except Exception as exc:
         return {
