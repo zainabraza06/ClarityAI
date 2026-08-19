@@ -19,9 +19,11 @@ A query is CLEAR when:
 - A specific company name is provided (e.g., "Tesla", "OpenAI", "Apple Inc.", "NVIDIA")
 - The research intent is understandable
 - Enough context exists to proceed with research
+- The user is asking about an uploaded document, file, PDF, or attachment
+  (the document itself is the context — do not ask for Apple, Tesla, or another public company)
 
 A query NEEDS_CLARIFICATION when:
-- No company name is provided at all
+- No company name is provided AND the query is not about uploaded documents
 - The company name is genuinely ambiguous (e.g., "Apple" without context could mean Apple Inc. or Apple Corps)
 - The query is too vague to research meaningfully (e.g., "tell me about tech companies")
 
@@ -43,12 +45,21 @@ _LEGAL_ENTITY = re.compile(r"\b(inc\.?|corp\.?|corporation|llc|ltd\.?|technologi
 _COMPARISON = re.compile(r"\bvs\.?\b|\bversus\b", re.I)
 
 
+_DOC_TRIGGERS = re.compile(
+    r"\b(document|documents|uploaded|upload|file|files|pdf|attachment|briefing)\b",
+    re.I,
+)
+
+
 def _is_explicit_research_query(query: str) -> bool:
     """Fast-path: skip LLM when the query already names a company and intent."""
     q = query.strip()
     if not q:
         return False
     ql = q.lower()
+
+    if _DOC_TRIGGERS.search(ql):
+        return True
 
     if _LEGAL_ENTITY.search(ql) or _COMPARISON.search(ql):
         return True
