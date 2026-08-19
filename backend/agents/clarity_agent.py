@@ -1,7 +1,7 @@
 import re
 from typing import Literal, Optional
 from pydantic import BaseModel
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from llm.provider import create_structured_llm
 
