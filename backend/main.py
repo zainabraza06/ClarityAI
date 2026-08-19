@@ -25,14 +25,9 @@ logger = logging.getLogger("clarityai")
 
 
 def _validate_env() -> None:
-    llm_keys = ("OPENROUTER_API_KEY", "GROQ_API_KEY", "GOOGLE_API_KEY")
-    if not any(os.environ.get(k) for k in llm_keys):
+    if not os.environ.get("MISTRAL_API_KEY"):
         raise EnvironmentError(
-            f"No LLM API key found. Set at least one of: {', '.join(llm_keys)}"
-        )
-    if not os.environ.get("TAVILY_API_KEY"):
-        raise EnvironmentError(
-            "TAVILY_API_KEY is required. Add it to your .env file."
+            "MISTRAL_API_KEY is required. Add it to your .env file."
         )
 
 
@@ -56,17 +51,24 @@ async def lifespan(app: FastAPI):
             "Run: pip install langgraph-checkpoint-sqlite"
         )
 
-    mcp_client = build_mcp_client()
-    logger.info("Starting Tavily MCP server...")
+    mcp_session = None
+    all_tools = [get_financial_data]
 
-    async with mcp_client.session("tavily") as session:
+    if os.environ.get("TAVILY_API_KEY"):
+        mcp_client = build_mcp_client()
+        logger.info("Starting Tavily MCP server...")
+        mcp_session = mcp_client.session("tavily")
+        session = await mcp_session.__aenter__()
         mcp_tools = await load_mcp_tools(session)
         all_tools = mcp_tools + [get_financial_data]
-
-        logger.info(
-            "Tools loaded: %s", [t.name for t in all_tools]
+    else:
+        logger.warning(
+            "TAVILY_API_KEY is not set — web search disabled; using Yahoo Finance only."
         )
 
+    logger.info("Tools loaded: %s", [t.name for t in all_tools])
+
+    try:
         if _sqlite_available:
             async with AsyncSqliteSaver.from_conn_string("clarity_checkpoints.db") as checkpointer:
                 logger.info("Persistent SQLite checkpointer active (clarity_checkpoints.db).")
@@ -80,9 +82,13 @@ async def lifespan(app: FastAPI):
             app_state["tools"] = all_tools
             logger.info("LangGraph workflow compiled (in-memory state).")
             yield
-
-    app_state.clear()
-    logger.info("MCP client closed. Application shutdown complete.")
+    finally:
+        app_state.clear()
+        if mcp_session is not None:
+            await mcp_session.__aexit__(None, None, None)
+            logger.info("MCP client closed. Application shutdown complete.")
+        else:
+            logger.info("Application shutdown complete.")
 
 
 app = FastAPI(
