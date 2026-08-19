@@ -1,3 +1,4 @@
+import re
 from typing import Literal, Optional
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
@@ -27,10 +28,50 @@ A query NEEDS_CLARIFICATION when:
 IMPORTANT: Check the conversation history first. If a company was mentioned earlier in the conversation,
 a follow-up like "What about their competitors?" is CLEAR — the company is already established.
 
-If clarification is needed, write a concise, specific question to ask the user."""
+If clarification is needed, write a concise, specific question to ask the user.
+
+Reserve NEEDS_CLARIFICATION for genuinely ambiguous cases only — NOT when the user
+names a well-known company with a clear research intent (e.g. "Research Apple Inc",
+"SWOT analysis of Microsoft", "Compare Amazon vs Microsoft")."""
+
+
+_RESEARCH_INTENT = re.compile(
+    r"\b(research|analyze|analysis|compare|swot|investor\s+memo|competitor\s+analysis|financials?|overview)\b",
+    re.I,
+)
+_LEGAL_ENTITY = re.compile(r"\b(inc\.?|corp\.?|corporation|llc|ltd\.?|technologies)\b", re.I)
+_COMPARISON = re.compile(r"\bvs\.?\b|\bversus\b", re.I)
+
+
+def _is_explicit_research_query(query: str) -> bool:
+    """Fast-path: skip LLM when the query already names a company and intent."""
+    q = query.strip()
+    if not q:
+        return False
+    ql = q.lower()
+
+    if _LEGAL_ENTITY.search(ql) or _COMPARISON.search(ql):
+        return True
+
+    if _RESEARCH_INTENT.search(ql) and len(q.split()) >= 2:
+        return True
+
+    if re.search(r"\bwhat\s+has\b.+\b(?:doing|recently|latest)\b", ql):
+        return True
+
+    return False
 
 
 async def clarity_node(state: dict) -> dict:
+    user_query = state.get("user_query", "")
+
+    if _is_explicit_research_query(user_query):
+        return {
+            "clarity_status": "clear",
+            "clarified_query": user_query,
+            "clarification_question": None,
+        }
+
     llm = create_structured_llm(ClarityOutput)
 
     messages = state.get("messages", [])
