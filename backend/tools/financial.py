@@ -8,6 +8,7 @@ publicly traded company. Private companies return a graceful notice.
 
 import asyncio
 import logging
+import re
 from langchain_core.tools import tool
 
 logger = logging.getLogger("clarityai.financial")
@@ -30,6 +31,31 @@ def _fmt(value, prefix: str = "$", suffix: str = "") -> str:
         return "N/A"
 
 
+_QUERY_STOPWORDS = {
+    "research", "write", "an", "a", "the", "investor", "memo", "for", "do",
+    "swot", "analysis", "of", "competitor", "compare", "vs", "versus",
+    "what", "has", "been", "doing", "recently", "tell", "me", "about",
+    "company", "overview", "financials", "financial", "current", "business",
+    "strategy", "market", "position", "and", "their", "main", "brief",
+    "give", "inc", "inc.", "corp", "corporation", "llc", "ltd",
+}
+
+
+def _company_query(raw: str) -> str:
+    """Strip research-intent words so yfinance is not queried with a full sentence."""
+    cleaned = re.sub(r"[^a-zA-Z0-9.&+\- ]", " ", raw or "")
+    tokens = [t for t in cleaned.split() if t.lower() not in _QUERY_STOPWORDS]
+    return " ".join(tokens[:6]) if tokens else (raw or "").strip()
+
+
+def _has_market_data(info: dict) -> bool:
+    return bool(
+        info.get("regularMarketPrice")
+        or info.get("currentPrice")
+        or info.get("marketCap")
+    )
+
+
 def _fetch_sync(company_or_ticker: str) -> str:
     """Blocking yfinance call — must be run in a thread pool."""
     try:
@@ -37,31 +63,27 @@ def _fetch_sync(company_or_ticker: str) -> str:
     except ImportError:
         return "yfinance is not installed — financial data unavailable."
 
-    ticker_symbol = company_or_ticker.strip()
+    lookup = _company_query(company_or_ticker)
+    ticker_symbol = lookup.strip()
+    info: dict = {}
 
-    # 1. Try the input as a direct ticker symbol
-    stock = yf.Ticker(ticker_symbol.upper())
-    info = stock.info or {}
+    # Direct ticker lookup only for short symbols (e.g. AAPL, NVDA)
+    if ticker_symbol and " " not in ticker_symbol and 1 <= len(ticker_symbol) <= 5:
+        stock = yf.Ticker(ticker_symbol.upper())
+        info = stock.info or {}
+        if _has_market_data(info):
+            ticker_symbol = ticker_symbol.upper()
 
-    # 2. If no price/cap found, try yfinance search to resolve company name → ticker
-    has_data = bool(
-        info.get("regularMarketPrice")
-        or info.get("currentPrice")
-        or info.get("marketCap")
-    )
+    has_data = _has_market_data(info)
     if not has_data:
         try:
-            search = yf.Search(company_or_ticker, max_results=5)
+            search = yf.Search(lookup or company_or_ticker, max_results=5)
             for q in search.quotes or []:
                 if q.get("quoteType") in ("EQUITY", "ETF"):
                     ticker_symbol = q["symbol"]
                     stock = yf.Ticker(ticker_symbol)
                     info = stock.info or {}
-                    has_data = bool(
-                        info.get("regularMarketPrice")
-                        or info.get("currentPrice")
-                        or info.get("marketCap")
-                    )
+                    has_data = _has_market_data(info)
                     if has_data:
                         break
         except Exception:
