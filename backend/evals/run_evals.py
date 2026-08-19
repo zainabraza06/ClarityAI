@@ -13,7 +13,7 @@ import re
 import sys
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -229,7 +229,7 @@ async def run(base_url: str, filter_id: str | None, out_path: str | None) -> Non
     print(f"{'-' * 60}\n")
 
     report = {
-        "run_at": datetime.utcnow().isoformat() + "Z",
+        "run_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "backend_url": base_url,
         "total": len(results),
         "passed": passed,
@@ -240,7 +240,7 @@ async def run(base_url: str, filter_id: str | None, out_path: str | None) -> Non
         "results": results,
     }
 
-    out_file = out_path or f"evals/results_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
+    out_file = out_path or f"evals/results_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
     Path(out_file).write_text(json.dumps(report, indent=2))
     print(f"  Full report written to: {out_file}\n")
 
