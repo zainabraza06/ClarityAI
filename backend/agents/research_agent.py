@@ -11,7 +11,7 @@ class ResearchOutput(BaseModel):
     confidence_score: int  # 0-10
 
 
-RESEARCH_SYSTEM_PROMPT = """You are the Research Agent for ClarityAI. Gather business intelligence using the search tool.
+RESEARCH_SYSTEM_PROMPT_WITH_SEARCH = """You are the Research Agent for ClarityAI. Gather business intelligence using the search tool.
 
 IMPORTANT: You MUST call the search tool at least once. Never answer from memory alone — always search first.
 
@@ -23,6 +23,15 @@ Search Strategy:
 After searching, write a comprehensive research summary (max 1000 words) covering all gathered information.
 If real-time financial data or document context is provided above, incorporate it into your summary.
 When content is labeled [Uploaded: filename], explicitly reference it as 'Per the uploaded document [filename]:' in your summary."""
+
+RESEARCH_SYSTEM_PROMPT_NO_SEARCH = """You are the Research Agent for ClarityAI. Synthesize business intelligence from the
+real-time financial data and document context provided below, supplemented by your training knowledge.
+
+Write a comprehensive research summary (max 1000 words) covering company overview, recent developments,
+market position, and financial highlights where data is available.
+If real-time financial data is provided, treat it as the primary source for all financial figures.
+When content is labeled [Uploaded: filename], explicitly reference it as 'Per the uploaded document [filename]:' in your summary.
+Include relevant public URLs (company website, investor relations page) when you know them."""
 
 
 ANALYSIS_SYSTEM_PROMPT = """You are a business intelligence analyst. Evaluate the research gathered and produce a structured summary.
@@ -40,7 +49,24 @@ Be accurate -- a false high score skips quality checks."""
 MAX_TOOL_RESULT_CHARS = 3000
 
 _URL_RE = re.compile(r'https?://[^\s\'"<>\]\)]+')
+_TICKER_RE = re.compile(r"\*\*[^*]+\*\*\s*\(([A-Z]{1,5})\)")
 _VALID_TIME_RANGES = {"day", "week", "month", "year"}
+
+
+def _collect_urls(text: str, sources: List[str], seen: set) -> None:
+    for url in _extract_urls(text):
+        if url not in seen and len(sources) < 10:
+            seen.add(url)
+            sources.append(url)
+
+
+def _add_yahoo_source(financial_text: str, sources: List[str], seen: set) -> None:
+    match = _TICKER_RE.search(financial_text)
+    if match:
+        url = f"https://finance.yahoo.com/quote/{match.group(1)}"
+        if url not in seen:
+            seen.add(url)
+            sources.insert(0, url)
 
 
 def _extract_urls(text: str) -> List[str]:
@@ -141,9 +167,14 @@ def create_research_node(tools: list):
             except Exception:
                 pass
 
-        # 3. Web search tool-calling loop (ReAct pattern)
+        # 3. Research — web search loop when tools available, otherwise LLM-only
+        system_prompt = (
+            RESEARCH_SYSTEM_PROMPT_WITH_SEARCH
+            if search_tools
+            else RESEARCH_SYSTEM_PROMPT_NO_SEARCH
+        )
         research_messages = [
-            SystemMessage(content=RESEARCH_SYSTEM_PROMPT),
+            SystemMessage(content=system_prompt),
             HumanMessage(
                 content=(
                     f"Research query: {query}\n\n"
@@ -154,44 +185,49 @@ def create_research_node(tools: list):
             ),
         ]
 
-        llm_with_tools = create_tool_llm(search_tools, temperature=0.1)
-        response = await llm_with_tools.ainvoke(research_messages)
-
         all_tool_results: List[str] = []
-        iterations = 0
-        while response.tool_calls and iterations < 3:
-            research_messages.append(response)
-            for tc in response.tool_calls:
-                tool_name = tc["name"]
-                if tool_name in tools_by_name:
-                    try:
-                        safe_args = _sanitize_tool_args(tool_name, tc["args"])
-                        result = await tools_by_name[tool_name].ainvoke(safe_args)
-                        content = str(result)[:MAX_TOOL_RESULT_CHARS]
-                        all_tool_results.append(content)
-                        research_messages.append(
-                            ToolMessage(content=content, tool_call_id=tc["id"])
-                        )
-                    except Exception as exc:
-                        research_messages.append(
-                            ToolMessage(
-                                content=f"Search error: {exc}",
-                                tool_call_id=tc["id"],
-                            )
-                        )
+        if search_tools:
+            llm_with_tools = create_tool_llm(search_tools, temperature=0.1)
             response = await llm_with_tools.ainvoke(research_messages)
-            iterations += 1
 
-        raw_findings = (_content_str(response.content) or "No research data retrieved.")[:4000]
+            iterations = 0
+            while response.tool_calls and iterations < 3:
+                research_messages.append(response)
+                for tc in response.tool_calls:
+                    tool_name = tc["name"]
+                    if tool_name in tools_by_name:
+                        try:
+                            safe_args = _sanitize_tool_args(tool_name, tc["args"])
+                            result = await tools_by_name[tool_name].ainvoke(safe_args)
+                            content = str(result)[:MAX_TOOL_RESULT_CHARS]
+                            all_tool_results.append(content)
+                            research_messages.append(
+                                ToolMessage(content=content, tool_call_id=tc["id"])
+                            )
+                        except Exception as exc:
+                            research_messages.append(
+                                ToolMessage(
+                                    content=f"Search error: {exc}",
+                                    tool_call_id=tc["id"],
+                                )
+                            )
+                response = await llm_with_tools.ainvoke(research_messages)
+                iterations += 1
+
+            raw_findings = (_content_str(response.content) or "No research data retrieved.")[:4000]
+        else:
+            from llm.provider import create_llm
+            response = await create_llm(temperature=0.1).ainvoke(research_messages)
+            raw_findings = (_content_str(response.content) or "No research data retrieved.")[:4000]
 
         # 4. Collect source URLs
         seen: set = set()
         sources: List[str] = []
         for content in all_tool_results:
-            for url in _extract_urls(content):
-                if url not in seen and len(sources) < 10:
-                    seen.add(url)
-                    sources.append(url)
+            _collect_urls(content, sources, seen)
+        if financial_context:
+            _add_yahoo_source(financial_context, sources, seen)
+        _collect_urls(raw_findings, sources, seen)
 
         # Prepend document and financial context so the analysis LLM always sees them
         if doc_context:
@@ -207,6 +243,8 @@ def create_research_node(tools: list):
                 content=f"Query: {query}\n\nGathered research:\n{raw_findings}"
             ),
         ])
+
+        _collect_urls(analysis.research_findings, sources, seen)
 
         return {
             "research_findings": analysis.research_findings,
